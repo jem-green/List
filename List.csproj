@@ -6,8 +6,8 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{34D678B8-7BE2-445A-8144-887408F72619}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>Dictionary</RootNamespace>
-    <AssemblyName>Dictionary</AssemblyName>
+    <RootNamespace>List</RootNamespace>
+    <AssemblyName>List</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
