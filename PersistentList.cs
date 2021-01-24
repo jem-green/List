@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.IO;
 
 namespace List
@@ -23,7 +19,6 @@ namespace List
         //
         // Data
         //
-        // 00 - unsigned int16 - orginal length
         // 00 - leb128 - Length of element handled by the binary writer and reader in LEB128 format
         // bytes - string
         // ...
@@ -33,8 +28,10 @@ namespace List
         // Index
         //
         // 00 - unsigned int16 - pointer to data
+        // 00 - unsigned int16 - length of data
         // ...
         // 00 - unsigned int16 - pointer to data + 1 
+        // 00 - unsigned int16 - length of data + 1
 
         #region Variables
 
