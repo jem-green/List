@@ -77,10 +77,10 @@ namespace List
             Console.WriteLine("data[1]=" + pl[1]);
             //Console.WriteLine("data[2]=" + pl[2]);
 
-            //foreach (string s in pl)
-            //{
-            //    Console.WriteLine("Enumerate " + s);
-            //}
+            foreach (string s in pl)
+            {
+                Console.WriteLine("Enumerate " + s);
+            }
 
         }
     }

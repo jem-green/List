@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 
 namespace List
 {
-    class PersistentList<T>
+    class PersistentList<T> : IEnumerator<T>
     {
         // Create a list of values that is actually a file
         // Need to consider locking as read and writes may conflict
@@ -14,11 +16,12 @@ namespace List
 
         // Header
         //
-        // 00 - unsigned int16 - number of elements
+        // 00 - unsigned int16 - number of elements size
         // 00 - unsigned int16 - pointer to current element
         //
         // Data
         //
+        // - Depending on data type but for string
         // 00 - leb128 - Length of element handled by the binary writer and reader in LEB128 format
         // bytes - string
         // ...
@@ -41,7 +44,10 @@ namespace List
 
         readonly object _lockObject = new Object();
         UInt16 _size;
+        UInt16 _count;
         UInt16 _pointer;
+        int _cursor;
+        private bool disposedValue;
 
         #endregion
         #region Constructors
@@ -115,6 +121,8 @@ namespace List
         {
             get
             {
+                // Could start to simplify here and use the private Read() method
+
                 object data;
                 lock (_lockObject)
                 {
@@ -225,6 +233,9 @@ namespace List
         #endregion
         #region Methods
 
+        /// <summary>
+        /// Clear the Queue
+        /// </summary>
         public void Clear()
         {
             lock (_lockObject)
@@ -291,7 +302,7 @@ namespace List
         }
 
         /// <summary>
-        /// Add a new item at the end of the list
+        /// Remove item from the list
         /// </summary>
         /// <param name="item"></param>
         public void Remove(T item)
@@ -369,6 +380,90 @@ namespace List
             }
         }
 
+        bool IEnumerator.MoveNext()
+        {
+            bool moved = false;
+            if (_cursor < _size)
+            {
+                moved = true;
+            }
+            return (moved);
+        }
+
+        void IEnumerator.Reset()
+        {
+            _cursor = -1;
+        }
+
+        object IEnumerator.Current
+        {
+            get
+            {
+                if ((_cursor < 0) || (_cursor == _size))
+                {
+                    throw new InvalidOperationException();
+                }
+                else
+                {
+                    return (Read(_path, _name, _cursor));
+                }
+            }
+        }
+
+        T IEnumerator<T>.Current
+        {
+            get
+            {
+                if ((_cursor < 0) || (_cursor == _size))
+                {
+                    throw new InvalidOperationException();
+                }
+                else
+                {
+                    return ((T)Convert.ChangeType(Read(_path, _name, _cursor), typeof(T)));
+                }
+            }
+        }
+
+        public IEnumerator GetEnumerator()
+        {
+            for (int cursor=_count; cursor < _size; cursor++)
+            {
+                // Return the current element and then on next function call 
+                // resume from next element rather than starting all over again;
+                yield return (Read(_path, _name, cursor));
+            }
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    // TODO: dispose managed state (managed objects)
+                }
+
+                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+                // TODO: set large fields to null
+                disposedValue = true;
+            }
+        }
+
+        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+        // ~PersistentQueue()
+        // {
+        //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        //     Dispose(disposing: false);
+        // }
+
+        void IDisposable.Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+
         #endregion
         #region Private
 
@@ -412,6 +507,36 @@ namespace List
             binaryWriter.Close();
 
         }
+
+        private object Read(string path, string filename, int index)
+        {
+            object data = null;
+
+            lock (_lockObject)
+            {
+                Type ParameterType = typeof(T);
+                string filenamePath = System.IO.Path.Combine(_path, _name);
+                // Need to search the index file
+
+                BinaryReader indexReader = new BinaryReader(new FileStream(filenamePath + ".idx", FileMode.Open));
+                BinaryReader binaryReader = new BinaryReader(new FileStream(filenamePath + ".bin", FileMode.Open));
+                indexReader.BaseStream.Seek(index * 4, SeekOrigin.Begin);                               // Get the pointer from the index file
+                UInt16 pointer = indexReader.ReadUInt16();                                              // Reader the pointer from the index file
+                binaryReader.BaseStream.Seek(pointer, SeekOrigin.Begin);                                // Move to the correct location in the data file
+                if (ParameterType == typeof(string))
+                {
+                    data = binaryReader.ReadString();
+                }
+                else
+                {
+                    data = default(T);
+                }
+                binaryReader.Close();
+                indexReader.Close();
+            }
+            return (data);
+        }
+
 
         #endregion
     }
