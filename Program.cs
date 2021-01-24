@@ -28,6 +28,7 @@ namespace List
             l.Add("start");
 
             l[1] = "to";
+            l[1] = "between";
 
             Console.WriteLine("count" + l.Count);
             Console.WriteLine("data[0]=" + l[0]);
@@ -36,8 +37,18 @@ namespace List
 
             l.Remove("end");
 
+            Console.WriteLine("count" + l.Count);
+            Console.WriteLine("data[0]=" + l[0]);
+            Console.WriteLine("data[1]=" + l[1]);
+            //Console.WriteLine("data[2]=" + l[2]);
 
-            // Compare
+            foreach (string s in q)
+            {
+                Console.WriteLine("Enumerate " + s);
+            }
+
+
+            Console.WriteLine("--------");
 
             PersistentList<string> pl = new PersistentList<string>(true);
 
@@ -64,6 +75,11 @@ namespace List
             Console.WriteLine("data[2]=" + pl[2]);
 
             pl.Remove("end");
+
+            Console.WriteLine("count" + pl.Count);
+            Console.WriteLine("data[0]=" + pl[0]);
+            Console.WriteLine("data[1]=" + pl[1]);
+            //Console.WriteLine("data[2]=" + pl[2]);
 
         }
     }
