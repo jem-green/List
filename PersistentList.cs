@@ -10,9 +10,9 @@ namespace List
         // Create a list of values that is actually a file
         // Need to consider locking as read and writes may conflict
         // Need to understand what thread safe means fully
-        // Start simple and just have it as a int, string dictionary
-        // assume that the file is stored with the exe
-        // will need some form of index as 
+        // Start simple and just have it as a string list
+        // assume that the file is stored with the exe / dll
+        // will need some form of index as will want to remove items
 
         // Header
         //
@@ -142,7 +142,7 @@ namespace List
                             data = binaryReader.ReadString();
                         }
                         else
-                        {   
+                        {
                             data = default(T);
                         }
                         binaryReader.Close();
@@ -267,7 +267,7 @@ namespace List
                 int offset = 0;
                 if (ParameterType == typeof(string))
                 {
-                    UInt16 length = (UInt16) Convert.ToString(item).Length;
+                    UInt16 length = (UInt16)Convert.ToString(item).Length;
                     offset = offset + LEB128.Size(length) + length; // Includes the byte length parameter
                                                                     // ** need to watch this as can be 2 bytes if length is > 127 characters
                                                                     // ** https://en.wikipedia.org/wiki/LEB128
@@ -344,7 +344,7 @@ namespace List
                     else
                     {
                         data = default(T);
-                    }               
+                    }
                 }
                 binaryReader.Close();
                 indexReader.Close();
@@ -363,8 +363,9 @@ namespace List
                 indexReader = new BinaryReader(stream);
                 BinaryWriter indexWriter = new BinaryWriter(stream);
 
-                // copy the 
-                for (int counter = index; counter < _size; counter ++)
+                // copy the ponter and length data downwards 
+
+                for (int counter = index; counter < _size; counter++)
                 {
                     indexReader.BaseStream.Seek((counter + 1) * 4, SeekOrigin.Begin); // Move to location of the index
                     UInt16 pointer = indexReader.ReadUInt16();                                              // Read the pointer from the index file
@@ -376,7 +377,20 @@ namespace List
                 indexWriter.BaseStream.SetLength(_size * 4);    // Trim the file as Add uses append
                 indexWriter.Close();
                 indexReader.Close();
+                stream.Close();
 
+            }
+        }
+
+        public void Insert(int index, T item)
+        {
+            if (index <= _size)
+            {
+                Write(_path, _name, index, item);
+            }
+            else
+            {
+                throw new IndexOutOfRangeException();
             }
         }
 
@@ -427,7 +441,7 @@ namespace List
 
         public IEnumerator GetEnumerator()
         {
-            for (int cursor=_count; cursor < _size; cursor++)
+            for (int cursor = _count; cursor < _size; cursor++)
             {
                 // Return the current element and then on next function call 
                 // resume from next element rather than starting all over again;
@@ -511,11 +525,11 @@ namespace List
         private object Read(string path, string filename, int index)
         {
             object data = null;
-
             lock (_lockObject)
             {
+
                 Type ParameterType = typeof(T);
-                string filenamePath = System.IO.Path.Combine(_path, _name);
+                string filenamePath = System.IO.Path.Combine(path, filename);
                 // Need to search the index file
 
                 BinaryReader indexReader = new BinaryReader(new FileStream(filenamePath + ".idx", FileMode.Open));
@@ -537,6 +551,72 @@ namespace List
             return (data);
         }
 
+        private void Write(string path, string filename, int index, object item)
+        {
+            lock (_lockObject)
+            {
+
+                Type ParameterType = typeof(T);
+                string filenamePath = System.IO.Path.Combine(path, filename);
+
+                // Write the data
+
+                // Appending will only work if the file is deleated and the updates start again
+                // Not sure if this is the best approach.
+                // With strings might have to do the write first and then update the pointer.
+
+                BinaryWriter binaryWriter = new BinaryWriter(new FileStream(filenamePath + ".bin", FileMode.Append));
+
+                int offset = 0;
+                UInt16 length = 0;
+                if (ParameterType == typeof(string))
+                {
+                    length = (UInt16)Convert.ToString(item).Length;
+                    offset = offset + LEB128.Size(length) + length; // Includes the byte length parameter
+                                                                    // ** need to watch this as can be 2 bytes if length is > 127 characters
+                                                                    // ** https://en.wikipedia.org/wiki/LEB128
+
+                    string s = Convert.ToString(item);
+                    binaryWriter.Write(s);
+                }
+                binaryWriter.Close();
+
+                // Write the header
+
+                binaryWriter = new BinaryWriter(new FileStream(filenamePath + ".bin", FileMode.OpenOrCreate));
+                binaryWriter.Seek(0, SeekOrigin.Begin); // Move to start of the file
+                _size++;
+                binaryWriter.Write(_size);                  // Write the size
+                binaryWriter.Write((UInt16)(_pointer + offset));               // Write the pointer
+                binaryWriter.Close();
+
+                // need to insert the ponter as a new entry in the index
+
+                FileStream stream = new FileStream(filenamePath + ".idx", FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+                BinaryReader indexReader = new BinaryReader(stream);
+                BinaryWriter indexWriter = new BinaryWriter(stream);
+
+                UInt16 position;
+                for (int counter = _size - 1; counter > index; counter--)
+                {
+                    position = (UInt16)((counter - 1) * 4);
+                    indexReader.BaseStream.Seek(position, SeekOrigin.Begin);       // Move to location of the index
+                    UInt16 pointer = indexReader.ReadUInt16();                              // Read the pointer from the index file
+                    UInt16 len = indexReader.ReadUInt16();
+                    position = (UInt16)(counter * 4);
+                    indexWriter.Seek(counter * 4, SeekOrigin.Begin);                        // Move to location of the index
+                    indexWriter.Write(pointer);
+                    indexWriter.Write(len);
+                }
+                position = (UInt16)(index * 4);
+                indexWriter.Seek(position, SeekOrigin.Begin);                        // Move to location of the index
+                indexWriter.Write(_pointer);
+                indexWriter.Write(length);
+                indexWriter.Close();
+                indexReader.Close();
+                stream.Close();
+            }
+        }
 
         #endregion
     }
