@@ -123,7 +123,7 @@ namespace List
             {
                 // Could start to simplify here and use the private Read() method
 
-                object data;
+                object data = null;
                 lock (_lockObject)
                 {
                     if (index < _size)
@@ -174,14 +174,16 @@ namespace List
                         BinaryReader indexReader = new BinaryReader(new FileStream(filenamePath + ".idx", FileMode.Open));
                         indexReader.BaseStream.Seek(index * 4, SeekOrigin.Begin);                               // Get the index pointer
                         UInt16 pointer = indexReader.ReadUInt16();                                              // Read the pointer from the index file
-                        UInt16 length = indexReader.ReadUInt16();                                               // Read the length from the index file
+                        int offset = indexReader.ReadUInt16();                                               // Read the length from the index file
                         indexReader.Close();
 
                         BinaryWriter binaryWriter = new BinaryWriter(new FileStream(filenamePath + ".bin", FileMode.OpenOrCreate));
                         if (ParameterType == typeof(string))
-                        {
-                            int offset = 0;
-                            if (length > value.ToString().Length)
+                        {                      
+                            int length = Convert.ToString(value).Length;
+                            length = LEB128.Size(length) + length;  // Includes the byte length parameter
+                                                                    // ** need to watch this as can be 2 bytes if length is > 127 characters
+                            if (offset > length)
                             {
                                 binaryWriter.Seek(pointer, SeekOrigin.Begin);
                                 string s = Convert.ToString(value);
@@ -189,19 +191,16 @@ namespace List
                             }
                             else
                             {
-                                // Need to write to new location and update the index
-                                length = (UInt16)Convert.ToString(value).Length;
-                                offset = offset + LEB128.Size(length) + length; // Includes the byte length parameter
-                                                                                // ** need to watch this as can be 2 bytes if length is > 127 characters
-
                                 BinaryWriter indexWriter = new BinaryWriter(new FileStream(filenamePath + ".idx", FileMode.Open));
                                 indexWriter.Seek(index * 4, SeekOrigin.Begin);   // Get the index pointer
                                 indexWriter.Write(_pointer);
                                 indexWriter.Close();
 
+                            	// Write the header
+
                                 binaryWriter.Seek(0, SeekOrigin.Begin);     // Move to start of the file
                                 binaryWriter.Write(_size);                  // Write the size
-                                _pointer = (UInt16)(_pointer + offset);     //
+                                _pointer = (UInt16)(_pointer + length);     //
                                 binaryWriter.Write(_pointer);               // Write the pointer
                                 binaryWriter.Close();
 
@@ -271,8 +270,9 @@ namespace List
                     offset = offset + LEB128.Size(length) + length; // Includes the byte length parameter
                                                                     // ** need to watch this as can be 2 bytes if length is > 127 characters
                                                                     // ** https://en.wikipedia.org/wiki/LEB128
-                    indexWriter.Write(length);
                 }
+
+				indexWriter.Write((UInt16)offset);
                 indexWriter.Close();
 
                 // Write the header
@@ -328,7 +328,7 @@ namespace List
                 {
                     indexReader.BaseStream.Seek(counter * 4, SeekOrigin.Begin);                               // Get the index pointer
                     UInt16 pointer = indexReader.ReadUInt16();                                              // Read the pointer from the index file
-                    UInt16 length = indexReader.ReadUInt16();
+                    UInt16 offset = indexReader.ReadUInt16();
 
                     binaryReader.BaseStream.Seek(pointer, SeekOrigin.Begin);                                // Move to the correct location in the data file
                     if (ParameterType == typeof(string))
@@ -369,10 +369,10 @@ namespace List
                 {
                     indexReader.BaseStream.Seek((counter + 1) * 4, SeekOrigin.Begin); // Move to location of the index
                     UInt16 pointer = indexReader.ReadUInt16();                                              // Read the pointer from the index file
-                    UInt16 length = indexReader.ReadUInt16();
+                    UInt16 offset = indexReader.ReadUInt16();
                     indexWriter.Seek(counter * 4, SeekOrigin.Begin); // Move to location of the index
                     indexWriter.Write(pointer);
-                    indexWriter.Write(length);
+                    indexWriter.Write(offset);
                 }
                 indexWriter.BaseStream.SetLength(_size * 4);    // Trim the file as Add uses append
                 indexWriter.Close();
@@ -602,16 +602,16 @@ namespace List
                     position = (UInt16)((counter - 1) * 4);
                     indexReader.BaseStream.Seek(position, SeekOrigin.Begin);       // Move to location of the index
                     UInt16 pointer = indexReader.ReadUInt16();                              // Read the pointer from the index file
-                    UInt16 len = indexReader.ReadUInt16();
+                    UInt16 off = indexReader.ReadUInt16();
                     position = (UInt16)(counter * 4);
                     indexWriter.Seek(counter * 4, SeekOrigin.Begin);                        // Move to location of the index
                     indexWriter.Write(pointer);
-                    indexWriter.Write(len);
+                    indexWriter.Write(off);
                 }
                 position = (UInt16)(index * 4);
                 indexWriter.Seek(position, SeekOrigin.Begin);                        // Move to location of the index
                 indexWriter.Write(_pointer);
-                indexWriter.Write(length);
+                indexWriter.Write((UInt16)offset);
                 indexWriter.Close();
                 indexReader.Close();
                 stream.Close();
