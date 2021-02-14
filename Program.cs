@@ -8,7 +8,6 @@ namespace List
         static void Main(string[] args)
         {
             List<string> l = new List<string>();
-
             l.Add("start");
             l.Add("next");
             l.Add("end");
@@ -60,8 +59,16 @@ namespace List
             Console.WriteLine("data[1]=" + l[1]);
             Console.WriteLine("data[2]=" + l[2]);
 
+            l.Reverse();
+
+            Console.WriteLine("count" + l.Count);
+            Console.WriteLine("data[0]=" + l[0]);
+            Console.WriteLine("data[1]=" + l[1]);
+            Console.WriteLine("data[2]=" + l[2]);
 
             Console.WriteLine("--------");
+
+            //l.Disponse();
 
             PersistentList<string> pl = new PersistentList<string>(true);
 
@@ -73,7 +80,7 @@ namespace List
             Console.WriteLine("data[1]=" + pl[1]);
             Console.WriteLine("data[2]=" + pl[2]);
 
-            pl.Insert(3, "insert");
+            pl.Insert(0, "insert");
             Console.WriteLine("count" + pl.Count);
             Console.WriteLine("data[0]=" + pl[0]);
             Console.WriteLine("data[1]=" + pl[1]);
@@ -86,7 +93,6 @@ namespace List
             Console.WriteLine("data[0]=" + pl[0]);
             pl.Add("next");
             pl.Add("start");
-
 
             Console.WriteLine("Update list");
             //pl[1] = "to";
@@ -115,6 +121,15 @@ namespace List
             Console.WriteLine("data[0]=" + pl[0]);
             Console.WriteLine("data[1]=" + pl[1]);
             Console.WriteLine("data[2]=" + pl[2]);
+
+            //pl.Reverse();
+
+            Console.WriteLine("count" + pl.Count);
+            Console.WriteLine("data[0]=" + pl[0]);
+            Console.WriteLine("data[1]=" + pl[1]);
+            Console.WriteLine("data[2]=" + pl[2]);
+
+            //pl.Dispose();
 
         }
     }
