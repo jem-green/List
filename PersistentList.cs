@@ -15,9 +15,10 @@ namespace List
         // will need some form of index as will want to remove items
 
         // Header
+        // ------
         //
-        // 00 - unsigned int16 - number of elements size
-        // 00 - unsigned int16 - pointer to current element
+        // 00 - unsigned int16 - number of elements _size
+        // 00 - unsigned int16 - pointer to current element _pointer
         //
         // Data assuming string (Value)
         //
@@ -30,6 +31,7 @@ namespace List
         // bytes - string
         //
         // Index
+        // -----
         //
         // 00 - unsigned int16 - pointer to data
         // 00 - unsigned int16 - length of data
@@ -45,8 +47,9 @@ namespace List
         // Lets assume we will add the extension automatically but filename is not correct 
 
         readonly object _lockObject = new Object();
-        UInt16 _size;
-        UInt16 _pointer;
+        UInt16 _size = 0;       // number of elements
+        UInt16 _pointer = 0;    // pointer to current element
+        UInt16 _data = 4;       // pointer to start of data area
         private bool _disposedValue;
 
         #endregion
@@ -136,7 +139,7 @@ namespace List
                         BinaryReader binaryReader = new BinaryReader(new FileStream(filenamePath + ".bin", FileMode.Open));
                         indexReader.BaseStream.Seek(index * 4, SeekOrigin.Begin);                               // Get the pointer from the index file
                         UInt16 pointer = indexReader.ReadUInt16();                                              // Reader the pointer from the index file
-                        binaryReader.BaseStream.Seek(pointer, SeekOrigin.Begin);                                // Move to the correct location in the data file
+                        binaryReader.BaseStream.Seek(_data + pointer, SeekOrigin.Begin);                                // Move to the correct location in the data file
                         byte flag = binaryReader.ReadByte();
                         if (ParameterType == typeof(string))
                         {
@@ -189,7 +192,7 @@ namespace List
                             if (offset > length)
                             {
                             	// If there is space write the data
-                                binaryWriter.Seek(pointer, SeekOrigin.Begin);
+                                binaryWriter.Seek(_data + pointer, SeekOrigin.Begin);
                             	byte flag = 0;
                             	binaryWriter.Write(flag);
                                 string s = Convert.ToString(value);
@@ -198,7 +201,7 @@ namespace List
                             else
                             {
                             	// There is no space so flag the record to indicate its spare
-                            	binaryWriter.Seek(pointer, SeekOrigin.Begin);
+                            	binaryWriter.Seek(_data + pointer, SeekOrigin.Begin);
                             	byte flag = 2;
                             	binaryWriter.Write(flag);
 
@@ -359,7 +362,7 @@ namespace List
                     pointer = indexReader.ReadUInt16();                                              // Read the pointer from the index file
                     UInt16 offset = indexReader.ReadUInt16();
 
-                    binaryReader.BaseStream.Seek(pointer, SeekOrigin.Begin);                                // Move to the correct location in the data file
+                    binaryReader.BaseStream.Seek(_data + pointer, SeekOrigin.Begin);                                // Move to the correct location in the data file
                     byte flag = binaryReader.ReadByte();
                     if (ParameterType == typeof(string))
                     {
@@ -394,7 +397,7 @@ namespace List
 
                     // Flag the record to indicate its deleted
 
-                    binaryWriter.Seek(pointer, SeekOrigin.Begin);
+                    binaryWriter.Seek(_data + pointer, SeekOrigin.Begin);
                     byte flag = 1;  // deleted
                     binaryWriter.Write(flag);
                     binaryWriter.Close();
@@ -453,7 +456,7 @@ namespace List
 
                     // flag the record to indicate its deleted
 
-                    binaryWriter.Seek(pointer, SeekOrigin.Begin);
+                    binaryWriter.Seek(_data + pointer, SeekOrigin.Begin);
                     byte flag = 1;  // Delete
                     binaryWriter.Write(flag);
                     binaryWriter.Close();
@@ -573,7 +576,7 @@ namespace List
             BinaryWriter binaryWriter = new BinaryWriter(new FileStream(filenamePath + ".bin", FileMode.OpenOrCreate));
             binaryWriter.Seek(0, SeekOrigin.Begin); // Move to start of the file
             _size = 0;
-            _pointer = 4;                           // Start of the data 2 x 16 bit
+            _pointer = 0;                           // Start of the data now offset by _data
             binaryWriter.Write(_size);              // Write the new size
             binaryWriter.Write(_pointer);           // Write the new pointer
             binaryWriter.BaseStream.SetLength(4);   // Fix the size as we are resetting
@@ -701,7 +704,7 @@ namespace List
                 BinaryReader binaryReader = new BinaryReader(new FileStream(filenamePath + ".bin", FileMode.Open));
                 indexReader.BaseStream.Seek(index * 4, SeekOrigin.Begin);                               // Get the pointer from the index file
                 UInt16 pointer = indexReader.ReadUInt16();                                              // Reader the pointer from the index file
-                binaryReader.BaseStream.Seek(pointer, SeekOrigin.Begin);                                // Move to the correct location in the data file
+                binaryReader.BaseStream.Seek(_data + pointer, SeekOrigin.Begin);                                // Move to the correct location in the data file
                 
                 byte flag = binaryReader.ReadByte();
                 if (ParameterType == typeof(string))
@@ -750,7 +753,7 @@ namespace List
                         if (offset > length)
                         {
                             // If there is space write the data
-                            binaryWriter.Seek(pointer, SeekOrigin.Begin);
+                            binaryWriter.Seek(_data + pointer, SeekOrigin.Begin);
                             byte flag = 0;
                             binaryWriter.Write(flag);
                             string s = Convert.ToString(item);
@@ -759,7 +762,7 @@ namespace List
                         else
                         {
                             // There is no space so flag the record to indicate its spare
-                            binaryWriter.Seek(pointer, SeekOrigin.Begin);
+                            binaryWriter.Seek(_data + pointer, SeekOrigin.Begin);
                             byte flag = 2;  // Spare
                             binaryWriter.Write(flag);
 
@@ -825,7 +828,7 @@ namespace List
 
                 // Flag the record to indicate its deleted
 
-                binaryWriter.Seek(pointer, SeekOrigin.Begin);
+                binaryWriter.Seek(_data + pointer, SeekOrigin.Begin);
                 byte flag = 1;  // deleted
                 binaryWriter.Write(flag);
                 binaryWriter.Close();
