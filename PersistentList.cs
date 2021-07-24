@@ -129,7 +129,7 @@ namespace List
                 object data = null;
                 lock (_lockObject)
                 {
-                    if (index < _size)
+                    if ((index >= 0) && (index < _size))
                     {
                         Type ParameterType = typeof(T);
                         string filenamePath = System.IO.Path.Combine(_path, _name);
@@ -170,7 +170,7 @@ namespace List
 
                 lock (_lockObject)
                 {
-                    if (index < _size)
+                    if ((index >= 0) && (index < _size))
                     {
                         Type ParameterType = typeof(T);
                         string filenamePath = System.IO.Path.Combine(_path, _name);
@@ -492,13 +492,13 @@ namespace List
 
         public void Insert(int index, T item)
         {
-            if ((index < 0) && (index >= _size))
+            if ((index >= 0) && (index < _size))
             {
-                throw new IndexOutOfRangeException();
+                Create(index, item);
             }
             else
             {
-                Create(index, item);
+                throw new IndexOutOfRangeException();
             }
         }
 
@@ -731,7 +731,7 @@ namespace List
 
             lock (_lockObject)
             {
-                if (index < _size)
+                if ((index >=0) && (index < _size))
                 {
                     Type ParameterType = typeof(T);
                     string filenamePath = System.IO.Path.Combine(_path, _name);
