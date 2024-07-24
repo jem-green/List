@@ -41,15 +41,15 @@ namespace List
 
         #region Fields
 
-        string _path = "";
-        string _name = "PersistentList";
+        private string _path = "";
+        private string _name = "PersistentList";
 
         // Lets assume we will add the extension automatically but filename is not correct 
 
-        readonly object _lockObject = new Object();
-        UInt16 _size = 0;       // number of elements
-        UInt16 _pointer = 0;    // pointer to current element
-        UInt16 _data = 4;       // pointer to start of data area
+        private readonly object _lockObject = new Object();
+        private UInt16 _size = 0;       // number of elements
+        private UInt16 _pointer = 0;    // pointer to current element
+        private UInt16 _data = 4;       // pointer to start of data area
         private bool _disposedValue;
 
         #endregion
@@ -85,7 +85,7 @@ namespace List
         }
 
         #endregion
-        #region Proprties
+        #region Properties
 
         public int Count
         {
@@ -95,7 +95,15 @@ namespace List
             }
         }
 
-        public string Path
+        public bool IsReadOnly
+        {   
+            get
+            {
+                return (false);
+            }
+        }
+		
+		public string Path
         {
             get
             {
@@ -119,7 +127,12 @@ namespace List
             }
         }
 
+
+        /// <summary>
         // Make the indexer property.
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
         public T this[int index]
         {
             get
@@ -164,8 +177,8 @@ namespace List
             {
                 // Need to update the item at the index
                 // This is more complex for strings if the new string is longer than the
-                // available space from the previous string. Just occred to me that 
-                // might be a good idea to store the orinal length or space as new 
+                // available space from the previous string. Just occurred to me that 
+                // might be a good idea to store the original length or space as new 
                 // strings might end of getting shorter and shorter
 
                 lock (_lockObject)
@@ -176,9 +189,11 @@ namespace List
                         string filenamePath = System.IO.Path.Combine(_path, _name);
 
                         BinaryReader indexReader = new BinaryReader(new FileStream(filenamePath + ".idx", FileMode.Open));
+                        UInt16 pointer = 0;
+                        int offset = 0;
                         indexReader.BaseStream.Seek(index * 4, SeekOrigin.Begin);                               // Get the index pointer
-                        UInt16 pointer = indexReader.ReadUInt16();                                              // Read the pointer from the index file
-                        int offset = indexReader.ReadUInt16();                                               // Read the length from the index file
+                        pointer = indexReader.ReadUInt16();                                              // Read the pointer from the index file
+                        offset = indexReader.ReadUInt16();                                               // Read the length from the index file
                         indexReader.Close();
 
                         BinaryWriter binaryWriter = new BinaryWriter(new FileStream(filenamePath + ".bin", FileMode.OpenOrCreate));
@@ -209,7 +224,7 @@ namespace List
                                 BinaryWriter indexWriter = new BinaryWriter(new FileStream(filenamePath + ".idx", FileMode.Open));
                                 indexWriter.Seek(index * 4, SeekOrigin.Begin);   // Get the index pointer
                                 indexWriter.Write(_pointer);
-                                indexWriter.Write(length);                      // Need to add the nwq length
+                                indexWriter.Write(length);                      // Need to add the new length
                                 indexWriter.Close();
 
                             	// Write the header
@@ -222,7 +237,7 @@ namespace List
 
                                 // Write the data
 
-                                // Appending will only work if the file is deleated and the updates start again
+                                // Appending will only work if the file is deleted and the updates start again
                                 // Not sure if this is the best approach.
                                 // With strings might have to do the write first and then update the pointer.
 
@@ -247,19 +262,11 @@ namespace List
             }
         }
 
-        public bool IsReadOnly
-        {
-            get
-            {
-                return (false);
-            }
-        }
-
         #endregion
         #region Methods
 
         /// <summary>
-        /// Clear the Queue
+        /// Clear the List
         /// </summary>
         public void Clear()
         {
@@ -293,7 +300,7 @@ namespace List
                 offset = offset + 1;    // Including the flag
                 if (ParameterType == typeof(string))
                 {
-                    int length = Convert.ToString(item).Length;
+                    UInt16 length = (UInt16)Convert.ToString(item).Length;
                     offset = offset + LEB128.Size(length) + length; // Includes the byte length parameter
                                                                     // ** need to watch this as can be 2 bytes if length is > 127 characters
                                                                     // ** https://en.wikipedia.org/wiki/LEB128
@@ -314,7 +321,7 @@ namespace List
 
                 // Write the data
 
-                // Appending will only work if the file is deleated and the updates start again
+                // Appending will only work if the file is deleted and the updates start again
                 // Not sure if this is the best approach.
                 // With strings might have to do the write first and then update the pointer.
 
@@ -334,6 +341,10 @@ namespace List
         /// Remove item from the list
         /// </summary>
         /// <param name="item"></param>
+        /// <summary>
+        /// Remove item from the List
+        /// </summary>
+        /// <param name="key"></param>
         public bool Remove(T item)
         {
             bool removed = false;
@@ -349,7 +360,7 @@ namespace List
                 // read the data
                 // check if the data matches
                 // remove the data
-                // update the index file by removing the refernce
+                // update the index file by removing the reference
 
                 object data;
                 BinaryReader binaryReader = new BinaryReader(new FileStream(filenamePath + ".bin", FileMode.Open));
@@ -408,7 +419,7 @@ namespace List
     	            indexReader = new BinaryReader(stream);
         	        BinaryWriter indexWriter = new BinaryWriter(stream);
 
-            	    // copy the ponter and length data downwards
+            	    // copy the pointer and length data downwards
                     // possibly a bulk method here will be quicker rather than
                     // record by record
 
@@ -467,7 +478,7 @@ namespace List
                     indexReader = new BinaryReader(stream);
                     BinaryWriter indexWriter = new BinaryWriter(stream);
 
-                    // copy the ponter and length data downwards 
+                    // copy the pointer and length data downwards 
 
                     for (int counter = index; counter < _size; counter++)
                     {
@@ -563,7 +574,7 @@ namespace List
             {
                 // Need to delete both data and index
                 File.Delete(filenamePath + ".bin");
-                // Assumption here is the the index also exists
+                // Assumption here is the index also exists
                 File.Delete(filenamePath + ".idx");
                 Reset(path, filename);
             }
@@ -597,7 +608,7 @@ namespace List
             {
                 // Need to delete both data and index
                 File.Delete(filenamePath + ".bin");
-                // Assumption here is the the index also exists
+                // Assumption here is the index also exists
                 File.Delete(filenamePath + ".idx");
             }
         }
@@ -653,8 +664,8 @@ namespace List
                 binaryWriter.Write((UInt16)(_pointer + offset));                // Write the pointer
                 binaryWriter.Close();                                           //
 
-                // As the create can reference any index postion not just the end
-                // need to insert the ponter as a new entry in the index
+                // As the create can reference any index position not just the end
+                // need to insert the pointer as a new entry in the index
 
                 FileStream stream = new FileStream(filenamePath + ".idx", FileMode.Open, FileAccess.ReadWrite, FileShare.None);
                 BinaryReader indexReader = new BinaryReader(stream);
@@ -725,8 +736,8 @@ namespace List
         {
             // Need to update the item at the index
             // This is more complex for strings if the new string is longer than the
-            // available space from the previous string. Just occured to me that 
-            // might be a good idea to store the orinal length or space as new 
+            // available space from the previous string. Just occurred to me that 
+            // might be a good idea to store the original length or space as new 
             // strings might end of getting shorter and shorter
 
             lock (_lockObject)
@@ -770,7 +781,7 @@ namespace List
                             BinaryWriter indexWriter = new BinaryWriter(new FileStream(filenamePath + ".idx", FileMode.Open));
                             indexWriter.Seek(index * 4, SeekOrigin.Begin);   // Get the index pointer
                             indexWriter.Write(_pointer);
-                            // dont re-write the length as this is still the preious gap
+                            // don't re-write the length as this is still the previous gap
                             indexWriter.Close();
 
                             // Write the header
@@ -839,7 +850,7 @@ namespace List
                 indexReader = new BinaryReader(stream);
                 BinaryWriter indexWriter = new BinaryWriter(stream);
 
-                // copy the ponter and length data downwards
+                // copy the pointer and length data downwards
                 // possibly a bulk method here will be quicker rather than
                 // record by record
 
@@ -873,7 +884,7 @@ namespace List
 
         public void Dispose()
         {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            // Do not change this code. Put clean-up code in 'Dispose(bool disposing)' method
             Dispose(true);
             GC.SuppressFinalize(this);
         }
