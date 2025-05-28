@@ -24,10 +24,10 @@ namespace List
         //
         // 0 - unsigned byte - flag 1 = deleted, 2 = Spare
         //
-        // 00 - leb128 - Length of element handled by the binary writer and reader in LEB128 format
+        // 00 - LEB128 - Length of element handled by the binary writer and reader in LEB128 format
         // bytes - string
         // ...
-        // 00 - leb128 - Length of element handled by the binary writer and reader in LEB128 format
+        // 00 - LEB128 - Length of element handled by the binary writer and reader in LEB128 format
         // bytes - string
         //
         // Index
@@ -609,15 +609,16 @@ namespace List
                 // Need to delete both data and index
                 File.Delete(filenamePath + ".bin");
                 // Assumption here is the index also exists
-                File.Delete(filenamePath + ".idx");
+                if (File.Exists(filenamePath + ".idx") == true)
+                {
+                	File.Delete(filenamePath + ".idx");
+                }
             }
         }
 
         /// <summary>
         /// Create a new record
         /// </summary>
-        /// <param name="path"></param>
-        /// <param name="filename"></param>
         /// <param name="index"></param>
         /// <param name="item"></param>
         private void Create(int index, object item)
